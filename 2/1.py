@@ -5,6 +5,7 @@ import string
 from bs4 import BeautifulSoup
 from lxml import etree
 import sys
+import shutil
 
 
 #reload(sys)
@@ -30,7 +31,6 @@ class Chapter:
     def setAddress(self, address):
         self.m_address = address
 
-
 class NetWorkSetting:
     def __init__(self):
         self.proxy = {
@@ -39,35 +39,68 @@ class NetWorkSetting:
         self.searchUrl = 'http://docs.huihoo.com/jgroups/2.5/tutorial/'
         self.prefixUrl = 'http://docs.huihoo.com/jgroups/2.5/tutorial/'
         self.myHeaders = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36',
+            'Cookie': '__utma=104082069.72684850.1493021797.1493023736.1493172406.3; __utmc=104082069; __utmz=104082069.1493021798.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none)',
+            'Host': 'docs.huihoo.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Encoding': 'gzip',
-            'Accept-Language': 'zh-CN,zh;q=0.8,en;q=0.6,zh-TW;q=0.4',
+            'Accept-Encoding': 'gzip, deflate, sdc',
+            'Accept-Language': 'zh-CN,zh;q=0.8',
+            'Proxy-Connection': 'keep - alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Upgrade-Insecure-Requests': '1',
             'Referer': 'http://docs.huihoo.com/jgroups/'}
-        self.savePath = "D:\\test\\shiye\\tutorial"
+        self.savePath = "D:\\test\\shiye\\tutorial\\"
+        self.imgPath = "D:\\test\\shiye\\tutorial\\images\\"
 
+
+def doDownLoad(url, path, ispic):
+    print("enter doDownLoad: url is %s" % url)
+    print("path is %s" % path)
+    if isProxyNeeded:
+        res = session.get(url, headers=setting.myHeaders, proxies=setting.proxy)
+    else:
+        res = session.get(url, headers=setting.myHeaders)
+    if path != "":
+        if res.status_code == 200:
+            f = open(path, 'w+')
+            if ispic:
+                f.write(res.content)
+            else:
+                f.write(res.content.decode('utf-8'))
+            f.close()
+
+    return res.content
+
+
+def downloadpicture(url, path):
+    print("enter downloadpicture: url is %s" % url)
+    print("path is %s" % path)
+    if isProxyNeeded:
+        res = session.get(url, headers=setting.myHeaders, proxies=setting.proxy, stream=True)
+    else:
+        res = session.get(url, headers=setting.myHeaders, stream=True)
+    if path != "":
+        if res.status_code == 200:
+            with open(path, 'wb') as f:
+                res.raw.decode_content = True
+                shutil.copyfileobj(res.raw, f)
 
 #1. get result for key word search
-print ("1, get chapter list source")
+print("1, get chapter list source")
 wmp = AllData()
 setting = NetWorkSetting()
 session = requests.Session()
 
-if isProxyNeeded:
-    result = session.get(setting.searchUrl, headers=setting.myHeaders, proxies=setting.proxy)
-else:
-    result = session.get(setting.searchUrl, headers=setting.myHeaders)
-print (result.url, result.status_code)
+content = doDownLoad(setting.searchUrl, "", False)
 
-soup = BeautifulSoup(result.content)
+soup = BeautifulSoup(content)
 index = 1
 for link in soup.find_all('a'):
-    if link.get('href') != "":
+    if link.get('href') != "" and link.text != "" and str(link.get('href')).find(".html") != -1 and link.text != None:
         temp = link.get('href')
         temp = str(temp)
 
         if temp.find("#") == -1:
-            print("target : %s" % temp)
             eachChapter = Chapter()
             chapter_url = setting.prefixUrl + str(link.get('href'))
             eachChapter.setAddress(chapter_url)
@@ -75,33 +108,36 @@ for link in soup.find_all('a'):
             eachChapter.setName(link.text + ".html")
             index += 1
             wmp.add_chapter(eachChapter)
-        else:
-            print("ignore : %s" % temp)
+        #else:
+            #print("ignore : %s" % temp)
 
 #2, makdir for docs
-print ("2, makdir for xiaoshuo")
+print ("2, makdir for docs")
 if os.path.exists(setting.savePath):
     pass
 else:
     os.makedirs(setting.savePath)
+if os.path.exists(setting.imgPath):
+    pass
+else:
+    os.makedirs(setting.imgPath)
 
 #3, get all the chapters for docs
-print ("3, get all the chapters for xiaoshuo")
+print ("3, get all the chapters for docs, if page contain picture, download it")
 for chapter in wmp.m_chapters:
-    newfilename = setting.savePath + "//" + chapter.m_name
+    newfilename = setting.savePath + chapter.m_name
     print ("newfilename is %s" % newfilename)
-    if os.path.exists(newfilename):
-        pass
-    else:
-        if isProxyNeeded:
-            result = session.get(chapter.m_address, headers=setting.myHeaders, proxies=setting.proxy)
-        else:
-            result = session.get(chapter.m_address, headers=setting.myHeaders)
 
-        if result.status_code == 200:
-            f = open(setting.savePath + "//" + chapter.m_name,'w+')
-            f.write(result.content.decode('utf-8'))
-            f.close()
+    pagecontent = doDownLoad(chapter.m_address, setting.savePath + chapter.m_name, False)
+    soup = BeautifulSoup(pagecontent)
+    for img in soup.find_all('img'):
+        print(img.get('src'))
+        if img.get('src') != "" and img.get('src') != None:
+            imgname = str(img.get('src'))[7:]
+            imgurl = setting.prefixUrl + "images/" + imgname
+            print(imgname)
+            downloadpicture(imgurl, setting.imgPath + imgname)
+
 
 print ("end of now")
 

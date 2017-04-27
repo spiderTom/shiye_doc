@@ -84,14 +84,14 @@ for link in soup.find_all('a'):
         print(link)
 
 #2, makdir for docs
-print ("2, makdir for xiaoshuo")
+print ("2, makdir for docs")
 if os.path.exists(setting.savePath):
     pass
 else:
     os.makedirs(setting.savePath)
 
 #3, get all the chapters for docs
-print ("3, get all the chapters for xiaoshuo")
+print ("3, get all the chapters for docs")
 index = 1
 for chapter in wmp.m_chapters:
     print(chapter.m_name.strip('\n'))
