@@ -53,7 +53,7 @@ class NetWorkSetting:
         self.imgPath = "D:\\test\\shiye\\tutorial\\images\\"
 
 
-def doDownLoad(url, path, ispic):
+def doDownLoad(url, path):
     print("enter doDownLoad: url is %s" % url)
     print("path is %s" % path)
     if isProxyNeeded:
@@ -63,10 +63,7 @@ def doDownLoad(url, path, ispic):
     if path != "":
         if res.status_code == 200:
             f = open(path, 'w+')
-            if ispic:
-                f.write(res.content)
-            else:
-                f.write(res.content.decode('utf-8'))
+            f.write(res.content.decode('utf-8'))
             f.close()
 
     return res.content
@@ -91,10 +88,10 @@ wmp = AllData()
 setting = NetWorkSetting()
 session = requests.Session()
 
-content = doDownLoad(setting.searchUrl, "", False)
+content = doDownLoad(setting.searchUrl, setting.savePath + "index.html")
 
 soup = BeautifulSoup(content)
-index = 1
+
 for link in soup.find_all('a'):
     if link.get('href') != "" and link.text != "" and str(link.get('href')).find(".html") != -1 and link.text != None:
         temp = link.get('href')
@@ -104,9 +101,7 @@ for link in soup.find_all('a'):
             eachChapter = Chapter()
             chapter_url = setting.prefixUrl + str(link.get('href'))
             eachChapter.setAddress(chapter_url)
-            #eachChapter.setName(str(index) + "    " + link.text + ".html")
-            eachChapter.setName(link.text + ".html")
-            index += 1
+            eachChapter.setName(str(link.get('href')))
             wmp.add_chapter(eachChapter)
         #else:
             #print("ignore : %s" % temp)
@@ -128,7 +123,7 @@ for chapter in wmp.m_chapters:
     newfilename = setting.savePath + chapter.m_name
     print ("newfilename is %s" % newfilename)
 
-    pagecontent = doDownLoad(chapter.m_address, setting.savePath + chapter.m_name, False)
+    pagecontent = doDownLoad(chapter.m_address, setting.savePath + chapter.m_name)
     soup = BeautifulSoup(pagecontent)
     for img in soup.find_all('img'):
         print(img.get('src'))

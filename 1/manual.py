@@ -61,14 +61,13 @@ def doDownLoad(url, path):
     else:
         res = session.get(url, headers=setting.myHeaders)
     if path != "":
-        if os.path.exists(path):
-            pass
-        else:
-            if res.status_code == 200:
-                f = open(path, 'w+')
-                f.write(res.content.decode('utf-8'))
-                f.close()
+        if res.status_code == 200:
+            f = open(path, 'w+')
+            f.write(res.content.decode('utf-8'))
+            f.close()
+
     return res.content
+
 
 def downloadpicture(url, path):
     print("enter downloadpicture: url is %s" % url)
@@ -89,12 +88,12 @@ wmp = AllData()
 setting = NetWorkSetting()
 session = requests.Session()
 
-content = doDownLoad(setting.searchUrl, "")
+content = doDownLoad(setting.searchUrl, setting.savePath + "index.html")
 
 soup = BeautifulSoup(content)
-index = 1
+
 for link in soup.find_all('a'):
-    if link.get('href') != "" and link.text != "" and str(link.get('href')).find(".html") != -1:
+    if link.get('href') != "" and link.text != "" and str(link.get('href')).find(".html") != -1 and link.text != None:
         temp = link.get('href')
         temp = str(temp)
 
@@ -102,9 +101,7 @@ for link in soup.find_all('a'):
             eachChapter = Chapter()
             chapter_url = setting.prefixUrl + str(link.get('href'))
             eachChapter.setAddress(chapter_url)
-            #eachChapter.setName(str(index) + "    " + link.text + ".html")
             eachChapter.setName(link.text + ".html")
-            index += 1
             wmp.add_chapter(eachChapter)
         #else:
             #print("ignore : %s" % temp)
@@ -126,7 +123,7 @@ for chapter in wmp.m_chapters:
     newfilename = setting.savePath + chapter.m_name
     print ("newfilename is %s" % newfilename)
 
-    pagecontent = doDownLoad(chapter.m_address, setting.savePath + "\\" + chapter.m_name)
+    pagecontent = doDownLoad(chapter.m_address, setting.savePath + chapter.m_name)
     soup = BeautifulSoup(pagecontent)
     for img in soup.find_all('img'):
         print(img.get('src'))
